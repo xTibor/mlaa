@@ -318,7 +318,7 @@ impl eframe::App for MlaaApplication {
 
                                 let color = lerp(
                                     Rgba::from(gradient.color_a)..=Rgba::from(gradient.color_b),
-                                    remap(y as f32, y1 as f32..=(y2 - 1) as f32, 0.0..=1.0),
+                                    remap(y as f32 + 0.5, y1 as f32..=y2 as f32, 0.0..=1.0),
                                 );
 
                                 ui.painter().rect_filled(pixel_rect.shrink(1.0), 0.0, color);
@@ -340,7 +340,7 @@ impl eframe::App for MlaaApplication {
 
                                 let color = lerp(
                                     Rgba::from(gradient.color_a)..=Rgba::from(gradient.color_b),
-                                    remap(x as f32, x1 as f32..=(x2 - 1) as f32, 0.0..=1.0),
+                                    remap(x as f32 + 0.5, x1 as f32..=x2 as f32, 0.0..=1.0),
                                 );
 
                                 ui.painter().rect_filled(pixel_rect.shrink(1.0), 0.0, color);
