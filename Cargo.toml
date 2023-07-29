@@ -1,0 +1,8 @@
+[package]
+name = "egui_mlaa"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.22.0"
+itertools = "0.11.0"
