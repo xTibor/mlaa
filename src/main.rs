@@ -1,4 +1,4 @@
-use eframe::egui::{self, PointerButton, Sense};
+use eframe::egui::{self, DragValue, PointerButton, Sense};
 use eframe::emath::{lerp, remap};
 use eframe::epaint::{vec2, Color32, Rect, Rgba, Stroke, Vec2};
 
@@ -27,6 +27,8 @@ struct MlaaApplication {
     selected_color: Color32,
     image_pixels: [[Color32; IMAGE_WIDTH]; IMAGE_HEIGHT],
 
+    seam_split_position: f32,
+
     show_vertical_seam_outlines: bool,
     show_vertical_gradient_outlines: bool,
     show_vertical_gradients: bool,
@@ -45,6 +47,8 @@ impl Default for MlaaApplication {
         let mut mlaa_application = MlaaApplication {
             selected_color: Color32::BLACK,
             image_pixels: Default::default(),
+
+            seam_split_position: 0.0,
 
             show_vertical_seam_outlines: true,
             show_vertical_gradient_outlines: true,
@@ -156,8 +160,13 @@ impl MlaaApplication {
             })
             .flatten()
             .map(|(seam_a, seam_b)| {
-                let gradient_y = (seam_a.y as f32) + (seam_a.length as f32 / 2.0);
-                let gradient_length = (seam_a.length as f32 / 2.0) + (seam_b.length as f32 / 2.0);
+                let gradient_y = (seam_a.y as f32)
+                    + (seam_a.length as f32 / 2.0)
+                    + (seam_a.length as f32 / 2.0 * self.seam_split_position);
+
+                let gradient_length = (seam_a.length as f32 / 2.0) + (seam_b.length as f32 / 2.0)
+                    - (seam_a.length as f32 / 2.0 * self.seam_split_position)
+                    - (seam_b.length as f32 / 2.0 * self.seam_split_position);
 
                 if seam_a.x < seam_b.x {
                     Gradient {
@@ -195,8 +204,13 @@ impl MlaaApplication {
             })
             .flatten()
             .map(|(seam_a, seam_b)| {
-                let gradient_x = (seam_a.x as f32) + (seam_a.length as f32 / 2.0);
-                let gradient_length = (seam_a.length as f32 / 2.0) + (seam_b.length as f32 / 2.0);
+                let gradient_x = (seam_a.x as f32)
+                    + (seam_a.length as f32 / 2.0)
+                    + (seam_a.length as f32 / 2.0 * self.seam_split_position);
+
+                let gradient_length = (seam_a.length as f32 / 2.0) + (seam_b.length as f32 / 2.0)
+                    - (seam_a.length as f32 / 2.0 * self.seam_split_position)
+                    - (seam_b.length as f32 / 2.0 * self.seam_split_position);
 
                 if seam_a.y < seam_b.y {
                     Gradient {
@@ -237,6 +251,18 @@ impl eframe::App for MlaaApplication {
 
                     if ui.button("Blank image").clicked() {
                         self.image_pixels = [[Color32::WHITE; IMAGE_WIDTH]; IMAGE_HEIGHT];
+                        self.recalculate_seams();
+                    }
+                });
+                ui.separator();
+
+                ui.vertical(|ui| {
+                    ui.label("Split position");
+
+                    let drag_value = DragValue::new(&mut self.seam_split_position)
+                        .clamp_range(0.0..=1.0)
+                        .speed(0.01);
+                    if ui.add(drag_value).changed() {
                         self.recalculate_seams();
                     }
                 });
