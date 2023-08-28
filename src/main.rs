@@ -1,26 +1,15 @@
 use eframe::egui::{self, DragValue, PointerButton, Sense};
 use eframe::emath::{lerp, remap};
-use eframe::epaint::{vec2, Color32, Rect, Rgba, Stroke, Vec2};
-
-use itertools::Itertools;
+use eframe::epaint::{vec2, Color32, Rect, Rgba, Stroke};
 
 const IMAGE_WIDTH: usize = 32;
 const IMAGE_HEIGHT: usize = 24;
-
-pub struct Seam {
-    pub x: usize,
-    pub y: usize,
-    pub length: usize,
-    pub color_a: Option<Color32>,
-    pub color_b: Option<Color32>,
-}
 
 pub struct Gradient {
     pub x: f32,
     pub y: f32,
     pub length: f32,
-    pub color_a: Color32,
-    pub color_b: Color32,
+    pub colors: (Color32, Color32),
 }
 
 struct MlaaApplication {
@@ -29,16 +18,12 @@ struct MlaaApplication {
 
     seam_split_position: f32,
 
-    show_vertical_seam_outlines: bool,
-    show_vertical_gradient_outlines: bool,
+    show_vertical_outlines: bool,
     show_vertical_gradients: bool,
-    vertical_seams: Vec<Seam>,
     vertical_gradients: Vec<Gradient>,
 
-    show_horizontal_seam_outlines: bool,
-    show_horizontal_gradient_outlines: bool,
+    show_horizontal_outlines: bool,
     show_horizontal_gradients: bool,
-    horizontal_seams: Vec<Seam>,
     horizontal_gradients: Vec<Gradient>,
 }
 
@@ -50,16 +35,12 @@ impl Default for MlaaApplication {
 
             seam_split_position: 0.0,
 
-            show_vertical_seam_outlines: true,
-            show_vertical_gradient_outlines: true,
+            show_vertical_outlines: true,
             show_vertical_gradients: false,
-            vertical_seams: Vec::new(),
             vertical_gradients: Vec::new(),
 
-            show_horizontal_seam_outlines: true,
-            show_horizontal_gradient_outlines: true,
+            show_horizontal_outlines: true,
             show_horizontal_gradients: false,
-            horizontal_seams: Vec::new(),
             horizontal_gradients: Vec::new(),
         };
 
@@ -93,144 +74,135 @@ impl MlaaApplication {
         }
     }
 
-    fn pixel(&self, x: isize, y: isize) -> Option<Color32> {
-        // TODO: Clamp, Wraparound, Extend, etc.
-
+    fn pixel(&self, x: isize, y: isize) -> Color32 {
         if (x < 0) || (x >= IMAGE_WIDTH as isize) {
-            return None;
+            return Color32::TRANSPARENT;
         }
 
         if (y < 0) || (y >= IMAGE_HEIGHT as isize) {
-            return None;
+            return Color32::TRANSPARENT;
         }
 
-        Some(self.image_pixels[y as usize][x as usize])
+        self.image_pixels[y as usize][x as usize]
+    }
+
+    fn vertical_run<P>(&self, x: isize, y: isize, pred: P) -> isize
+    where
+        P: Fn((Color32, Color32)) -> bool,
+    {
+        let mut run_length = 0;
+
+        while (y + run_length < IMAGE_HEIGHT as isize)
+            && pred((self.pixel(x, y + run_length), self.pixel(x + 1, y + run_length)))
+        {
+            run_length += 1;
+        }
+
+        run_length
+    }
+
+    fn horizontal_run<P>(&self, x: isize, y: isize, pred: P) -> isize
+    where
+        P: Fn((Color32, Color32)) -> bool,
+    {
+        let mut run_length = 0;
+
+        while (x + run_length < IMAGE_WIDTH as isize)
+            && pred((self.pixel(x + run_length, y), self.pixel(x + run_length, y + 1)))
+        {
+            run_length += 1;
+        }
+
+        run_length
     }
 
     fn recalculate_seams(&mut self) {
-        self.vertical_seams = (-1..=IMAGE_WIDTH as isize)
-            .tuple_windows()
-            .flat_map(|(x1, x2)| {
-                (0..IMAGE_HEIGHT as isize)
-                    .map(|y| (y, self.pixel(x1, y), self.pixel(x2, y)))
-                    .dedup_by_with_count(|a, b| (a.1 == b.1) && (a.2 == b.2))
-                    .filter(|(_, (_, color_a, color_b))| color_a != color_b)
-                    .map(|(length, (y, color_a, color_b))| Seam {
-                        x: x2 as usize,
-                        y: y as usize,
-                        length,
-                        color_a,
-                        color_b,
-                    })
-                    .collect_vec()
-            })
-            .collect_vec();
+        self.vertical_gradients.clear();
+        self.horizontal_gradients.clear();
 
-        self.horizontal_seams = (-1..=IMAGE_HEIGHT as isize)
-            .tuple_windows()
-            .flat_map(|(y1, y2)| {
-                (0..IMAGE_WIDTH as isize)
-                    .map(|x| (x, self.pixel(x, y1), self.pixel(x, y2)))
-                    .dedup_by_with_count(|a, b| (a.1 == b.1) && (a.2 == b.2))
-                    .filter(|(_, (_, color_a, color_b))| color_a != color_b)
-                    .map(|(length, (x, color_a, color_b))| Seam {
-                        x: x as usize,
-                        y: y2 as usize,
-                        length,
-                        color_a,
-                        color_b,
-                    })
-                    .collect_vec()
-            })
-            .collect_vec();
+        for x in -1..IMAGE_WIDTH as isize {
+            let mut y = 0;
+            y += self.vertical_run(x, y, |(c1, c2)| c1 == c2);
 
-        self.vertical_gradients = self
-            .vertical_seams
-            .iter()
-            .map(|seam_a| {
-                self.vertical_seams
-                    .iter()
-                    .find(|seam_b| {
-                        ((seam_b.x == seam_a.x + 1) || (seam_b.x + 1 == seam_a.x))
-                            && (seam_b.y == seam_a.y + seam_a.length)
-                            && (seam_b.color_a == seam_a.color_a)
-                            && (seam_b.color_b == seam_a.color_b)
-                    })
-                    .map(|seam_b| (seam_a, seam_b))
-            })
-            .flatten()
-            .map(|(seam_a, seam_b)| {
-                let gradient_y = (seam_a.y as f32)
-                    + (seam_a.length as f32 / 2.0)
-                    + (seam_a.length as f32 / 2.0 * self.seam_split_position);
+            while y < IMAGE_HEIGHT as isize {
+                let seam_colors = (self.pixel(x, y), self.pixel(x + 1, y));
+                let seam_length = self.vertical_run(x, y, |c| c == seam_colors);
 
-                let gradient_length = (seam_a.length as f32 / 2.0) + (seam_b.length as f32 / 2.0)
-                    - (seam_a.length as f32 / 2.0 * self.seam_split_position)
-                    - (seam_b.length as f32 / 2.0 * self.seam_split_position);
+                for neighbor_delta in [-1, 1] {
+                    let neighbor_length = self.vertical_run(x + neighbor_delta, y + seam_length, |c| c == seam_colors);
 
-                if seam_a.x < seam_b.x {
-                    Gradient {
-                        x: seam_a.x as f32,
-                        y: gradient_y,
-                        length: gradient_length,
-                        color_a: seam_a.color_b.or(seam_b.color_b).unwrap(),
-                        color_b: seam_a.color_a.or(seam_b.color_a).unwrap(),
-                    }
-                } else {
-                    Gradient {
-                        x: seam_b.x as f32,
-                        y: gradient_y,
-                        length: gradient_length,
-                        color_a: seam_a.color_a.or(seam_b.color_a).unwrap(),
-                        color_b: seam_a.color_b.or(seam_b.color_b).unwrap(),
+                    if neighbor_length > 0 {
+                        let gradient_x = x.max(x + neighbor_delta) as f32;
+
+                        let gradient_y = (y as f32)
+                            + (seam_length as f32 / 2.0)
+                            + (seam_length as f32 / 2.0 * self.seam_split_position);
+
+                        let gradient_length = (seam_length as f32 / 2.0) + (neighbor_length as f32 / 2.0)
+                            - (seam_length as f32 / 2.0 * self.seam_split_position)
+                            - (neighbor_length as f32 / 2.0 * self.seam_split_position);
+
+                        let gradient_colors = if neighbor_delta < 0 {
+                            (seam_colors.0, seam_colors.1)
+                        } else {
+                            (seam_colors.1, seam_colors.0)
+                        };
+
+                        self.vertical_gradients.push(Gradient {
+                            x: gradient_x,
+                            y: gradient_y,
+                            length: gradient_length,
+                            colors: gradient_colors,
+                        });
                     }
                 }
-            })
-            .collect_vec();
 
-        self.horizontal_gradients = self
-            .horizontal_seams
-            .iter()
-            .map(|seam_a| {
-                self.horizontal_seams
-                    .iter()
-                    .find(|seam_b| {
-                        ((seam_b.y == seam_a.y + 1) || (seam_b.y + 1 == seam_a.y))
-                            && (seam_b.x == seam_a.x + seam_a.length)
-                            && (seam_b.color_a == seam_a.color_a)
-                            && (seam_b.color_b == seam_a.color_b)
-                    })
-                    .map(|seam_b| (seam_a, seam_b))
-            })
-            .flatten()
-            .map(|(seam_a, seam_b)| {
-                let gradient_x = (seam_a.x as f32)
-                    + (seam_a.length as f32 / 2.0)
-                    + (seam_a.length as f32 / 2.0 * self.seam_split_position);
+                y += seam_length;
+                y += self.vertical_run(x, y, |(c1, c2)| c1 == c2);
+            }
+        }
 
-                let gradient_length = (seam_a.length as f32 / 2.0) + (seam_b.length as f32 / 2.0)
-                    - (seam_a.length as f32 / 2.0 * self.seam_split_position)
-                    - (seam_b.length as f32 / 2.0 * self.seam_split_position);
+        for y in -1..IMAGE_HEIGHT as isize {
+            let mut x = 0;
+            x += self.horizontal_run(x, y, |(c1, c2)| c1 == c2);
 
-                if seam_a.y < seam_b.y {
-                    Gradient {
-                        x: gradient_x,
-                        y: seam_a.y as f32,
-                        length: gradient_length,
-                        color_a: seam_a.color_b.or(seam_b.color_b).unwrap(),
-                        color_b: seam_a.color_a.or(seam_b.color_a).unwrap(),
-                    }
-                } else {
-                    Gradient {
-                        x: gradient_x,
-                        y: seam_b.y as f32,
-                        length: gradient_length,
-                        color_a: seam_a.color_a.or(seam_b.color_a).unwrap(),
-                        color_b: seam_a.color_b.or(seam_b.color_b).unwrap(),
+            while x < IMAGE_WIDTH as isize {
+                let seam_colors = (self.pixel(x, y), self.pixel(x, y + 1));
+                let seam_length = self.horizontal_run(x, y, |c| c == seam_colors);
+
+                for neighbor_delta in [-1, 1] {
+                    let neighbor_length = self.horizontal_run(x + seam_length, y + neighbor_delta, |c| c == seam_colors);
+
+                    if neighbor_length > 0 {
+                        let gradient_y = y.max(y + neighbor_delta) as f32;
+
+                        let gradient_x = (x as f32)
+                            + (seam_length as f32 / 2.0)
+                            + (seam_length as f32 / 2.0 * self.seam_split_position);
+
+                        let gradient_length = (seam_length as f32 / 2.0) + (neighbor_length as f32 / 2.0)
+                            - (seam_length as f32 / 2.0 * self.seam_split_position)
+                            - (neighbor_length as f32 / 2.0 * self.seam_split_position);
+
+                        let gradient_colors = if neighbor_delta < 0 {
+                            (seam_colors.0, seam_colors.1)
+                        } else {
+                            (seam_colors.1, seam_colors.0)
+                        };
+
+                        self.horizontal_gradients.push(Gradient {
+                            x: gradient_x,
+                            y: gradient_y,
+                            length: gradient_length,
+                            colors: gradient_colors,
+                        });
                     }
                 }
-            })
-            .collect_vec();
+
+                x += seam_length;
+                x += self.horizontal_run(x, y, |(c1, c2)| c1 == c2);
+            }
+        }
     }
 }
 
@@ -269,16 +241,9 @@ impl eframe::App for MlaaApplication {
                 ui.separator();
 
                 ui.vertical(|ui| {
-                    ui.label("Seam outlines");
-                    ui.checkbox(&mut self.show_vertical_seam_outlines, "Vertical");
-                    ui.checkbox(&mut self.show_horizontal_seam_outlines, "Horizontal");
-                });
-                ui.separator();
-
-                ui.vertical(|ui| {
-                    ui.label("Gradient outlines");
-                    ui.checkbox(&mut self.show_vertical_gradient_outlines, "Vertical");
-                    ui.checkbox(&mut self.show_horizontal_gradient_outlines, "Horizontal");
+                    ui.label("Outlines");
+                    ui.checkbox(&mut self.show_vertical_outlines, "Vertical");
+                    ui.checkbox(&mut self.show_horizontal_outlines, "Horizontal");
                 });
                 ui.separator();
 
@@ -343,7 +308,7 @@ impl eframe::App for MlaaApplication {
                                 );
 
                                 let color = lerp(
-                                    Rgba::from(gradient.color_a)..=Rgba::from(gradient.color_b),
+                                    Rgba::from(gradient.colors.0)..=Rgba::from(gradient.colors.1),
                                     remap(y as f32 + 0.5, y1 as f32..=y2 as f32, 0.0..=1.0),
                                 );
 
@@ -365,7 +330,7 @@ impl eframe::App for MlaaApplication {
                                 );
 
                                 let color = lerp(
-                                    Rgba::from(gradient.color_a)..=Rgba::from(gradient.color_b),
+                                    Rgba::from(gradient.colors.0)..=Rgba::from(gradient.colors.1),
                                     remap(x as f32 + 0.5, x1 as f32..=x2 as f32, 0.0..=1.0),
                                 );
 
@@ -375,35 +340,9 @@ impl eframe::App for MlaaApplication {
                     }
                 }
 
-                // Draw seam outlines
-                {
-                    let draw_seam = |seam: &Seam, axis: Vec2, color: Color32| {
-                        let seam_line_start = rect.left_top() + cell_size * vec2(seam.x as f32, seam.y as f32);
-                        let seam_line_end = seam_line_start + cell_size * Vec2::splat(seam.length as f32) * axis;
-
-                        ui.painter()
-                            .line_segment([seam_line_start, seam_line_end], Stroke { width: 3.0, color });
-
-                        ui.painter().circle_filled(seam_line_start, 4.0, color);
-                        ui.painter().circle_filled(seam_line_end, 4.0, color);
-                    };
-
-                    if self.show_vertical_seam_outlines {
-                        for seam in &self.vertical_seams {
-                            draw_seam(seam, vec2(0.0, 1.0), Color32::RED);
-                        }
-                    }
-
-                    if self.show_horizontal_seam_outlines {
-                        for seam in &self.horizontal_seams {
-                            draw_seam(seam, vec2(1.0, 0.0), Color32::BLUE);
-                        }
-                    }
-                }
-
                 // Draw gradient outlines
                 {
-                    if self.show_vertical_gradient_outlines {
+                    if self.show_vertical_outlines {
                         for gradient in &self.vertical_gradients {
                             let gradient_rect = Rect::from_min_size(
                                 rect.left_top() + cell_size * vec2(gradient.x, gradient.y),
@@ -420,13 +359,13 @@ impl eframe::App for MlaaApplication {
                                 .line_segment([gradient_rect.center_top(), gradient_rect.center_bottom()], stroke_bold);
 
                             ui.painter()
-                                .circle(gradient_rect.center_top(), 4.0, gradient.color_a, stroke_thin);
+                                .circle(gradient_rect.center_top(), 4.0, gradient.colors.0, stroke_thin);
                             ui.painter()
-                                .circle(gradient_rect.center_bottom(), 4.0, gradient.color_b, stroke_thin);
+                                .circle(gradient_rect.center_bottom(), 4.0, gradient.colors.1, stroke_thin);
                         }
                     }
 
-                    if self.show_horizontal_gradient_outlines {
+                    if self.show_horizontal_outlines {
                         for gradient in &self.horizontal_gradients {
                             let gradient_rect = Rect::from_min_size(
                                 rect.left_top() + cell_size * vec2(gradient.x, gradient.y),
@@ -443,9 +382,9 @@ impl eframe::App for MlaaApplication {
                                 .line_segment([gradient_rect.left_center(), gradient_rect.right_center()], stroke_bold);
 
                             ui.painter()
-                                .circle(gradient_rect.left_center(), 4.0, gradient.color_a, stroke_thin);
+                                .circle(gradient_rect.left_center(), 4.0, gradient.colors.0, stroke_thin);
                             ui.painter()
-                                .circle(gradient_rect.right_center(), 4.0, gradient.color_b, stroke_thin);
+                                .circle(gradient_rect.right_center(), 4.0, gradient.colors.1, stroke_thin);
                         }
                     }
                 }
