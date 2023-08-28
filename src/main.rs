@@ -128,7 +128,7 @@ impl MlaaApplication {
                 let seam_colors = (self.pixel(x, y), self.pixel(x + 1, y));
                 let seam_length = self.vertical_run(x, y, |c| c == seam_colors);
 
-                for neighbor_delta in [-1, 1] {
+                'neighbor_loop: for neighbor_delta in [-1, 1] {
                     let neighbor_length = self.vertical_run(x + neighbor_delta, y + seam_length, |c| c == seam_colors);
 
                     if neighbor_length > 0 {
@@ -154,6 +154,8 @@ impl MlaaApplication {
                             length: gradient_length,
                             colors: gradient_colors,
                         });
+
+                        break 'neighbor_loop;
                     }
                 }
 
@@ -170,8 +172,9 @@ impl MlaaApplication {
                 let seam_colors = (self.pixel(x, y), self.pixel(x, y + 1));
                 let seam_length = self.horizontal_run(x, y, |c| c == seam_colors);
 
-                for neighbor_delta in [-1, 1] {
-                    let neighbor_length = self.horizontal_run(x + seam_length, y + neighbor_delta, |c| c == seam_colors);
+                'neighbor_loop: for neighbor_delta in [-1, 1] {
+                    let neighbor_length =
+                        self.horizontal_run(x + seam_length, y + neighbor_delta, |c| c == seam_colors);
 
                     if neighbor_length > 0 {
                         let gradient_y = y.max(y + neighbor_delta) as f32;
@@ -196,6 +199,8 @@ impl MlaaApplication {
                             length: gradient_length,
                             colors: gradient_colors,
                         });
+
+                        break 'neighbor_loop;
                     }
                 }
 
