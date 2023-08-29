@@ -283,6 +283,8 @@ impl eframe::App for MlaaApplication {
     }
 }
 
+// cargo run --release --bin mlaa_egui
+
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         initial_window_size: Some(vec2(800.0, 640.0)),

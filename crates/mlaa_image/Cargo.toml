@@ -1,0 +1,9 @@
+[package]
+name    = "mlaa_image"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+mlaa  = { workspace = true     }
+image = { version   = "0.24.7" }
+clap  = { version   = "4.4.1", features = ["derive"] }
