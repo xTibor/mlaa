@@ -1,22 +1,28 @@
-pub struct MlaaGradient<C> {
-    pub x: f32,
-    pub y: f32,
-    pub length: f32,
-    pub colors: (C, C),
+pub enum Gradient<C> {
+    Vertical {
+        x: f32,
+        y: f32,
+        height: f32,
+        colors: (C, C),
+    },
+    Horizontal {
+        x: f32,
+        y: f32,
+        width: f32,
+        colors: (C, C),
+    },
 }
 
-pub fn mlaa<P, C, VG, HG>(
+pub fn mlaa<P, C, G>(
     image_width: usize,
     image_height: usize,
     image_pixels: P,
     seam_split_position: f32,
-    mut emit_vertical_gradient: VG,
-    mut emit_horizontal_gradient: HG,
+    mut emit_gradient: G,
 ) where
     P: Fn(isize, isize) -> C,
     C: PartialEq + Copy + Clone,
-    VG: FnMut(MlaaGradient<C>),
-    HG: FnMut(MlaaGradient<C>),
+    G: FnMut(Gradient<C>),
 {
     let vertical_run = |x: isize, y: isize, pred: Box<dyn Fn((C, C)) -> bool>| -> isize {
         let mut run_length = 0;
@@ -70,10 +76,10 @@ pub fn mlaa<P, C, VG, HG>(
                         (seam_colors.1, seam_colors.0)
                     };
 
-                    emit_vertical_gradient(MlaaGradient {
+                    emit_gradient(Gradient::Vertical {
                         x: gradient_x,
                         y: gradient_y,
-                        length: gradient_length,
+                        height: gradient_length,
                         colors: gradient_colors,
                     });
 
@@ -114,10 +120,10 @@ pub fn mlaa<P, C, VG, HG>(
                         (seam_colors.1, seam_colors.0)
                     };
 
-                    emit_horizontal_gradient(MlaaGradient {
+                    emit_gradient(Gradient::Horizontal {
                         x: gradient_x,
                         y: gradient_y,
-                        length: gradient_length,
+                        width: gradient_length,
                         colors: gradient_colors,
                     });
 
