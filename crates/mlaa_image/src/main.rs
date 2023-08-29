@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use image::Rgba;
 
-use mlaa::{mlaa, Gradient};
+use mlaa_impl::{mlaa, Gradient};
 
 #[derive(Parser)]
 struct MlaaArgs {

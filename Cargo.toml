@@ -5,10 +5,10 @@ edition = "2021"
 [workspace]
 resolver = "2"
 members = [
-    "crates/mlaa",
     "crates/mlaa_egui",
     "crates/mlaa_image",
+    "crates/mlaa_impl",
 ]
 
 [workspace.dependencies]
-mlaa = { path = "crates/mlaa" }
+mlaa_impl = { path = "crates/mlaa_impl" }

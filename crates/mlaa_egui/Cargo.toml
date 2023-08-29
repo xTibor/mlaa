@@ -4,5 +4,5 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-mlaa   = { workspace = true     }
-eframe = { version   = "0.22.0" }
+mlaa_impl = { workspace = true     }
+eframe    = { version   = "0.22.0" }

@@ -1565,15 +1565,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "mlaa"
-version = "0.1.0"
-
-[[package]]
 name = "mlaa_egui"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "mlaa",
+ "mlaa_impl",
 ]
 
 [[package]]
@@ -1582,8 +1578,12 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "image",
- "mlaa",
+ "mlaa_impl",
 ]
+
+[[package]]
+name = "mlaa_impl"
+version = "0.1.0"
 
 [[package]]
 name = "nanorand"

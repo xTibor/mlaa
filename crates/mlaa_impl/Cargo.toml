@@ -1,5 +1,5 @@
 [package]
-name    = "mlaa"
+name    = "mlaa_impl"
 version = { workspace = true }
 edition = { workspace = true }
 

@@ -2,7 +2,7 @@ use eframe::egui::{self, DragValue, PointerButton, Sense};
 use eframe::emath::{lerp, remap};
 use eframe::epaint::{vec2, Color32, Rect, Rgba, Stroke};
 
-use mlaa::{mlaa, Gradient};
+use mlaa_impl::{mlaa, Gradient};
 
 const IMAGE_WIDTH: usize = 32;
 const IMAGE_HEIGHT: usize = 24;
