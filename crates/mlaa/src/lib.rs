@@ -5,7 +5,7 @@ pub struct MlaaGradient<C> {
     pub colors: (C, C),
 }
 
-pub fn mlaa<'a, P, C, VG, HG>(
+pub fn mlaa<P, C, VG, HG>(
     image_width: usize,
     image_height: usize,
     image_pixels: P,
