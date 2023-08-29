@@ -752,13 +752,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui_mlaa"
-version = "0.1.0"
-dependencies = [
- "eframe",
-]
-
-[[package]]
 name = "emath"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1337,6 +1330,18 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "mlaa"
+version = "0.1.0"
+
+[[package]]
+name = "mlaa_egui"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "mlaa",
 ]
 
 [[package]]

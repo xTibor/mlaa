@@ -1,7 +1,13 @@
-[package]
-name = "egui_mlaa"
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-eframe = "0.22.0"
+[workspace]
+resolver = "2"
+members = [
+    "crates/mlaa",
+    "crates/mlaa_egui",
+]
+
+[workspace.dependencies]
+mlaa  = { path = "crates/mlaa" }

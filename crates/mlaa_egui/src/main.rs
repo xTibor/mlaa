@@ -2,7 +2,6 @@ use eframe::egui::{self, DragValue, PointerButton, Sense};
 use eframe::emath::{lerp, remap};
 use eframe::epaint::{vec2, Color32, Rect, Rgba, Stroke};
 
-mod mlaa;
 use mlaa::{mlaa, MlaaGradient};
 
 const IMAGE_WIDTH: usize = 32;

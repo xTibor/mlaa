@@ -1,0 +1,6 @@
+[package]
+name    = "mlaa"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]

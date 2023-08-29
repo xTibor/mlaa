@@ -1,0 +1,8 @@
+[package]
+name    = "mlaa_egui"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+mlaa   = { workspace = true     }
+eframe = { version   = "0.22.0" }
