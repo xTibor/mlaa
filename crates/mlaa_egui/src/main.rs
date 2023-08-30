@@ -2,7 +2,7 @@ use eframe::egui::{self, DragValue, PointerButton, Sense};
 use eframe::emath::{lerp, remap};
 use eframe::epaint::{vec2, Color32, Rect, Rgba, Stroke};
 
-use mlaa_impl::{mlaa, Gradient};
+use mlaa_impl::{mlaa_metrics, GradientMetrics};
 
 const IMAGE_WIDTH: usize = 32;
 const IMAGE_HEIGHT: usize = 24;
@@ -12,7 +12,7 @@ struct MlaaApplication {
     image_pixels: [[Color32; IMAGE_WIDTH]; IMAGE_HEIGHT],
     seam_split_position: f32,
 
-    gradients: Vec<Gradient<Color32>>,
+    gradient_metrics: Vec<GradientMetrics<Color32>>,
 
     show_vertical_outlines: bool,
     show_vertical_gradients: bool,
@@ -28,7 +28,7 @@ impl Default for MlaaApplication {
             image_pixels: Default::default(),
             seam_split_position: 0.0,
 
-            gradients: Vec::new(),
+            gradient_metrics: Vec::new(),
 
             show_vertical_outlines: true,
             show_vertical_gradients: true,
@@ -68,9 +68,9 @@ impl MlaaApplication {
     }
 
     fn recalculate_gradients(&mut self) {
-        self.gradients.clear();
+        self.gradient_metrics.clear();
 
-        mlaa(
+        mlaa_metrics(
             IMAGE_WIDTH,
             IMAGE_HEIGHT,
             |x, y| {
@@ -85,7 +85,7 @@ impl MlaaApplication {
                 self.image_pixels[y as usize][x as usize]
             },
             self.seam_split_position,
-            |gradient| self.gradients.push(gradient),
+            |gradient| self.gradient_metrics.push(gradient),
         );
     }
 }
@@ -178,9 +178,9 @@ impl eframe::App for MlaaApplication {
                 }
 
                 // Draw gradients
-                for gradient in &self.gradients {
+                for gradient in &self.gradient_metrics {
                     match gradient {
-                        Gradient::Vertical { x, y, height, colors } => {
+                        GradientMetrics::Vertical { x, y, height, colors } => {
                             if self.show_vertical_gradients {
                                 let y1 = y.floor() as usize;
                                 let y2 = (y + height).ceil() as usize;
@@ -201,7 +201,7 @@ impl eframe::App for MlaaApplication {
                                 }
                             }
                         }
-                        Gradient::Horizontal { x, y, width, colors } => {
+                        GradientMetrics::Horizontal { x, y, width, colors } => {
                             if self.show_horizontal_gradients {
                                 let x1 = x.floor() as usize;
                                 let x2 = (x + width).ceil() as usize;
@@ -226,9 +226,9 @@ impl eframe::App for MlaaApplication {
                 }
 
                 // Draw gradient outlines
-                for gradient in &self.gradients {
+                for gradient in &self.gradient_metrics {
                     match gradient {
-                        Gradient::Vertical { x, y, height, colors } => {
+                        GradientMetrics::Vertical { x, y, height, colors } => {
                             if self.show_vertical_outlines {
                                 let gradient_rect = Rect::from_min_size(
                                     rect.left_top() + cell_size * vec2(*x, *y),
@@ -252,7 +252,7 @@ impl eframe::App for MlaaApplication {
                                     .circle(gradient_rect.center_bottom(), 4.0, colors.1, stroke_thin);
                             }
                         }
-                        Gradient::Horizontal { x, y, width, colors } => {
+                        GradientMetrics::Horizontal { x, y, width, colors } => {
                             if self.show_horizontal_outlines {
                                 let gradient_rect = Rect::from_min_size(
                                     rect.left_top() + cell_size * vec2(*x, *y),

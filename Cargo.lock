@@ -1579,6 +1579,7 @@ dependencies = [
  "clap",
  "image",
  "mlaa_impl",
+ "smol-rgb",
 ]
 
 [[package]]
@@ -2275,6 +2276,12 @@ dependencies = [
  "smithay-client-toolkit",
  "wayland-client",
 ]
+
+[[package]]
+name = "smol-rgb"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf8cf47e12994cb83c0c23b44e7657c01047ac047ff4f7cd91f1433fa16f5d8f"
 
 [[package]]
 name = "socket2"

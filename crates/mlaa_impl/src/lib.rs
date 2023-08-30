@@ -1,4 +1,4 @@
-pub enum Gradient<C> {
+pub enum GradientMetrics<C> {
     Vertical {
         x: f32,
         y: f32,
@@ -13,7 +13,7 @@ pub enum Gradient<C> {
     },
 }
 
-pub fn mlaa<P, C, G>(
+pub fn mlaa_metrics<P, C, G>(
     image_width: usize,
     image_height: usize,
     image_pixels: P,
@@ -22,7 +22,7 @@ pub fn mlaa<P, C, G>(
 ) where
     P: Fn(isize, isize) -> C,
     C: PartialEq + Copy + Clone,
-    G: FnMut(Gradient<C>),
+    G: FnMut(GradientMetrics<C>),
 {
     let vertical_run = |x: isize, y: isize, pred: Box<dyn Fn((C, C)) -> bool>| -> isize {
         let mut run_length = 0;
@@ -76,7 +76,7 @@ pub fn mlaa<P, C, G>(
                         (seam_colors.1, seam_colors.0)
                     };
 
-                    emit_gradient(Gradient::Vertical {
+                    emit_gradient(GradientMetrics::Vertical {
                         x: gradient_x,
                         y: gradient_y,
                         height: gradient_length,
@@ -120,7 +120,7 @@ pub fn mlaa<P, C, G>(
                         (seam_colors.1, seam_colors.0)
                     };
 
-                    emit_gradient(Gradient::Horizontal {
+                    emit_gradient(GradientMetrics::Horizontal {
                         x: gradient_x,
                         y: gradient_y,
                         width: gradient_length,
@@ -133,6 +133,38 @@ pub fn mlaa<P, C, G>(
 
             x += seam_length;
             x += horizontal_run(x, y, Box::new(|(c1, c2)| c1 == c2));
+        }
+    }
+}
+
+pub fn mlaa_painter<B, C, D>(blend_colors: B, mut draw_pixel: D, gradient: &GradientMetrics<C>)
+where
+    B: Fn(C, C, f32) -> C,
+    D: FnMut(isize, isize, C),
+    C: PartialEq + Copy + Clone,
+{
+    match gradient {
+        GradientMetrics::Vertical { x, y, height, colors } => {
+            let y1 = y.floor() as isize;
+            let y2 = (y + height).ceil() as isize;
+            let x = *x as isize;
+
+            for y in y1..y2 {
+                // TODO: 0.5
+                let t = ((y as f32) - (y1 as f32)) / ((y2 as f32) - (y1 as f32));
+                draw_pixel(x, y, blend_colors(colors.0, colors.1, t));
+            }
+        }
+        GradientMetrics::Horizontal { x, y, width, colors } => {
+            let x1 = x.floor() as isize;
+            let x2 = (x + width).ceil() as isize;
+            let y = *y as isize;
+
+            for x in x1..x2 {
+                // TODO: 0.5
+                let t = ((x as f32) - (x1 as f32)) / ((x2 as f32) - (x1 as f32));
+                draw_pixel(x, y, blend_colors(colors.0, colors.1, t));
+            }
         }
     }
 }
