@@ -150,8 +150,7 @@ where
             let x = *x as isize;
 
             for y in y1..y2 {
-                // TODO: 0.5
-                let t = ((y as f32) - (y1 as f32)) / ((y2 as f32) - (y1 as f32));
+                let t = (0.5 + (y as f32) - (y1 as f32)) / ((y2 as f32) - (y1 as f32));
                 draw_pixel(x, y, blend_colors(colors.0, colors.1, t));
             }
         }
@@ -161,8 +160,7 @@ where
             let y = *y as isize;
 
             for x in x1..x2 {
-                // TODO: 0.5
-                let t = ((x as f32) - (x1 as f32)) / ((x2 as f32) - (x1 as f32));
+                let t = (0.5 + (x as f32) - (x1 as f32)) / ((x2 as f32) - (x1 as f32));
                 draw_pixel(x, y, blend_colors(colors.0, colors.1, t));
             }
         }
