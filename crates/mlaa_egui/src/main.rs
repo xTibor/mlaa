@@ -2,7 +2,7 @@ use eframe::egui::{self, DragValue, PointerButton, Sense};
 use eframe::emath::{lerp, remap};
 use eframe::epaint::{vec2, Color32, Rect, Rgba, Stroke};
 
-use mlaa_impl::{mlaa_metrics, GradientMetrics};
+use mlaa_impl::{mlaa_metrics, mlaa_painter, GradientMetrics};
 
 const IMAGE_WIDTH: usize = 32;
 const IMAGE_HEIGHT: usize = 24;
@@ -179,50 +179,16 @@ impl eframe::App for MlaaApplication {
 
                 // Draw gradients
                 for gradient in &self.gradient_metrics {
-                    match gradient {
-                        GradientMetrics::Vertical { x, y, height, colors } => {
-                            if self.show_vertical_gradients {
-                                let y1 = y.floor() as usize;
-                                let y2 = (y + height).ceil() as usize;
-                                let x = *x as usize;
+                    mlaa_painter(
+                        |color_a, color_b, t| lerp(Rgba::from(color_a)..=Rgba::from(color_b), t).into(),
+                        |x, y, color| {
+                            let pixel_rect =
+                                Rect::from_min_size(rect.left_top() + cell_size * vec2(x as f32, y as f32), cell_size);
 
-                                for y in y1..y2 {
-                                    let pixel_rect = Rect::from_min_size(
-                                        rect.left_top() + cell_size * vec2(x as f32, y as f32),
-                                        cell_size,
-                                    );
-
-                                    let color = lerp(
-                                        Rgba::from(colors.0)..=Rgba::from(colors.1),
-                                        remap(y as f32 + 0.5, y1 as f32..=y2 as f32, 0.0..=1.0),
-                                    );
-
-                                    ui.painter().rect_filled(pixel_rect.shrink(1.0), 0.0, color);
-                                }
-                            }
-                        }
-                        GradientMetrics::Horizontal { x, y, width, colors } => {
-                            if self.show_horizontal_gradients {
-                                let x1 = x.floor() as usize;
-                                let x2 = (x + width).ceil() as usize;
-                                let y = *y as usize;
-
-                                for x in x1..x2 {
-                                    let pixel_rect = Rect::from_min_size(
-                                        rect.left_top() + cell_size * vec2(x as f32, y as f32),
-                                        cell_size,
-                                    );
-
-                                    let color = lerp(
-                                        Rgba::from(colors.0)..=Rgba::from(colors.1),
-                                        remap(x as f32 + 0.5, x1 as f32..=x2 as f32, 0.0..=1.0),
-                                    );
-
-                                    ui.painter().rect_filled(pixel_rect.shrink(1.0), 0.0, color);
-                                }
-                            }
-                        }
-                    }
+                            ui.painter().rect_filled(pixel_rect.shrink(1.0), 0.0, color);
+                        },
+                        gradient,
+                    );
                 }
 
                 // Draw gradient outlines
