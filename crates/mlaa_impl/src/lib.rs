@@ -166,7 +166,38 @@ pub fn mlaa_metrics<P, C, F>(
     }
 
     if mlaa_options.corners {
-        // TODO
+        fn all_equals<T: PartialEq>(items: &[T]) -> bool {
+            items.iter().all(|item| item == &items[0])
+        }
+
+        for y in 1..image_height as isize - 1 {
+            for x in 1..image_width as isize - 1 {
+                let p = &image_pixels;
+                let (c1, c2, c3) = (p(x - 1, y - 1), p(x + 0, y - 1), p(x + 1, y - 1));
+                let (c4, c5, c6) = (p(x - 1, y + 0), p(x + 0, y + 0), p(x + 1, y + 0));
+                let (c7, c8, c9) = (p(x - 1, y + 1), p(x + 0, y + 1), p(x + 1, y + 1));
+
+                // Top-left corner
+                if all_equals(&[c5, c6, c8]) && all_equals(&[c1, c2, c3, c4, c7]) && (c1 != c5) {
+                    emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c1, c5) })
+                }
+
+                // Top-right corner
+                if all_equals(&[c4, c5, c8]) && all_equals(&[c1, c2, c3, c6, c9]) && (c3 != c5) {
+                    emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c3, c5) })
+                }
+
+                // Bottom-left corner
+                if all_equals(&[c2, c5, c6]) && all_equals(&[c1, c4, c7, c8, c9]) && (c7 != c5) {
+                    emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c7, c5) })
+                }
+
+                // Bottom-right corner
+                if all_equals(&[c2, c5, c4]) && all_equals(&[c3, c6, c7, c8, c9]) && (c9 != c5) {
+                    emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c9, c5) })
+                }
+            }
+        }
     }
 }
 
