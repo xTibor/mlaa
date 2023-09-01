@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use image::Rgba;
 
-use mlaa_impl::{mlaa_metrics, mlaa_painter};
+use mlaa_impl::{mlaa_metrics, mlaa_painter, MlaaOptions};
 
 #[derive(Parser)]
 struct MlaaArgs {
@@ -32,8 +32,8 @@ fn main() {
                 .unwrap_or(&Rgba([0, 0, 0, 0]))
                 .to_owned()
         },
-        0.0,
-        |gradient| {
+        &MlaaOptions::default(),
+        |mlaa_feature| {
             mlaa_painter(
                 |c1, c2, t| {
                     // The `image` crate doesn't give a fuck about gamma correctness.
@@ -65,7 +65,7 @@ fn main() {
                 |x, y, c| {
                     output_image.put_pixel(x as u32, y as u32, c);
                 },
-                &gradient,
+                &mlaa_feature,
             );
         },
     );
