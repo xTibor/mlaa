@@ -1,10 +1,12 @@
 [package]
 name    = "mlaa_image"
 version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
 mlaa_impl = { workspace = true     }
 image     = { version   = "0.24.7" }
 smol-rgb  = { version   = "0.3.0"  }
-clap      = { version   = "4.4.1", features = ["derive"]    }
+clap      = { version   = "4.4.1", features = ["derive"] }

@@ -1,6 +1,8 @@
 [package]
 name    = "mlaa_impl"
 version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
