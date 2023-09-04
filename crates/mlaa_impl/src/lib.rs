@@ -36,7 +36,7 @@ pub enum MlaaFeature<C> {
     },
 }
 
-pub fn mlaa_metrics<P, C, F>(
+pub fn mlaa_features<P, C, F>(
     image_width: usize,
     image_height: usize,
     image_pixels: P,

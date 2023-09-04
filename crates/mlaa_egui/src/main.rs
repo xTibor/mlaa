@@ -2,7 +2,7 @@ use eframe::egui::{self, DragValue, PointerButton, Sense};
 use eframe::emath::{lerp, remap};
 use eframe::epaint::{vec2, Color32, Rect, Rgba, Stroke};
 
-use mlaa_impl::{mlaa_metrics, mlaa_painter, MlaaFeature, MlaaOptions};
+use mlaa_impl::{mlaa_features, mlaa_painter, MlaaFeature, MlaaOptions};
 
 const IMAGE_WIDTH: usize = 32;
 const IMAGE_HEIGHT: usize = 24;
@@ -66,7 +66,7 @@ impl MlaaApplication {
     fn recalculate_mlaa_features(&mut self) {
         self.mlaa_features.clear();
 
-        mlaa_metrics(
+        mlaa_features(
             IMAGE_WIDTH,
             IMAGE_HEIGHT,
             |x, y| {

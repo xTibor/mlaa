@@ -9,7 +9,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use image::{ImageFormat, Rgba};
 
-use mlaa_impl::{mlaa_metrics, mlaa_painter, MlaaOptions};
+use mlaa_impl::{mlaa_features, mlaa_painter, MlaaOptions};
 
 #[derive(Parser)]
 struct MlaaArgs {
@@ -62,7 +62,7 @@ fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
     let input_image = input_image.to_rgba8();
     let mut output_image = input_image.clone();
 
-    mlaa_metrics(
+    mlaa_features(
         input_image.width() as usize,
         input_image.height() as usize,
         |x, y| {
