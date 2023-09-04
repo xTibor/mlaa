@@ -166,6 +166,7 @@ pub fn mlaa_features<P, C, F>(
         }
     }
 
+    #[allow(clippy::identity_op)]
     if mlaa_options.corners {
         fn all_equals<T: PartialEq>(items: &[T]) -> bool {
             items.iter().all(|item| item == &items[0])
