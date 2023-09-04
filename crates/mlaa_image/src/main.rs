@@ -1,7 +1,7 @@
 #![feature(error_iter)]
 
 use std::error::Error;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -44,19 +44,19 @@ fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
         let config_path = {
             if let Some(config_path) = args.config_path {
                 Some(config_path)
-            } else {
-                let search_root = std::env::current_dir()?;
-
+            } else if let Some(search_root) = args.input_path.as_ref().and_then(|path| path.parent()) {
                 search_root
                     .ancestors()
                     .map(|search_directory| search_directory.to_owned().join(".mlaa"))
                     .find(|config_path| config_path.is_file())
+            } else {
+                None
             }
         };
 
         if let Some(config_path) = config_path {
             eprintln!("mlaa_image: Using config file \"{}\"", config_path.display());
-            MlaaOptions::default()
+            toml::from_str(&fs::read_to_string(config_path)?)?
         } else {
             eprintln!("mlaa_image: Using default MLAA options");
             MlaaOptions::default()
@@ -71,7 +71,7 @@ fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
         };
 
         let image_format = if let Some(input_path) = args.input_path.as_ref() {
-            ImageFormat::from_path(input_path).unwrap()
+            ImageFormat::from_path(input_path)?
         } else {
             ImageFormat::Png
         };
@@ -140,7 +140,7 @@ fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
         };
 
         let image_format = if let Some(output_path) = args.output_path.as_ref() {
-            ImageFormat::from_path(output_path).unwrap()
+            ImageFormat::from_path(output_path)?
         } else {
             ImageFormat::Png
         };

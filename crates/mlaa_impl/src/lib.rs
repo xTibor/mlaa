@@ -1,3 +1,4 @@
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MlaaOptions {
     pub seam_split_position: f32,
     pub vertical_gradients: bool,

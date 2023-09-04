@@ -1,0 +1,4 @@
+seam_split_position = 0.0
+vertical_gradients = true
+horizontal_gradients = true
+corners = false

@@ -5,4 +5,9 @@ authors = { workspace = true }
 license = { workspace = true }
 edition = { workspace = true }
 
+[features]
+default = []
+serde   = ["dep:serde"]
+
 [dependencies]
+serde = { workspace = true, optional = true }

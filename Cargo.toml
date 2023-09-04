@@ -14,3 +14,4 @@ members = [
 
 [workspace.dependencies]
 mlaa_impl = { path = "crates/mlaa_impl" }
+serde     = { version = "1.0.188", features = ["derive"] }
