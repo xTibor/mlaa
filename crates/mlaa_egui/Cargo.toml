@@ -6,5 +6,5 @@ license = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-mlaa_impl = { workspace = true     }
-eframe    = { version   = "0.22.0" }
+mlaa_impl = { workspace = true }
+eframe    = { version   = "0.22.0", features = ["glow", "default_fonts"], default-features = false }

@@ -6,8 +6,8 @@ license = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-mlaa_impl = { workspace = true,    features = ["serde"]  }
-clap      = { version   = "4.4.1", features = ["derive"] }
-image     = { version   = "0.24.7" }
-smol-rgb  = { version   = "0.3.0"  }
-toml      = { version   = "0.7.5"  }
+mlaa_impl = { workspace = true,     features = ["serde"] }
+clap      = { version   = "4.4.1",  features = ["std", "help", "usage", "derive"], default-features = false }
+image     = { version   = "0.24.7", features = ["bmp", "png", "tga"],              default-features = false }
+smol-rgb  = { version   = "0.3.0" }
+toml      = { version   = "0.7.5" }
