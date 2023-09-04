@@ -12,6 +12,7 @@ use image::{ImageFormat, Rgba};
 use mlaa_impl::{mlaa_features, mlaa_painter, MlaaOptions};
 
 #[derive(Parser)]
+#[command(version)]
 struct MlaaArgs {
     #[clap(short = 'i', long = "input")]
     input_path: Option<PathBuf>,
@@ -38,7 +39,7 @@ fn main() -> ExitCode {
 }
 
 fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
-    let args = MlaaArgs::parse();
+    let args = MlaaArgs::try_parse()?;
 
     let mlaa_options = {
         let config_path = {
