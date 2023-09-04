@@ -1,26 +1,48 @@
+use std::fs::File;
+use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
 
 use clap::Parser;
-use image::Rgba;
+use image::{ImageFormat, Rgba};
 
 use mlaa_impl::{mlaa_metrics, mlaa_painter, MlaaOptions};
 
 #[derive(Parser)]
 struct MlaaArgs {
-    pub input_path: PathBuf,
+    #[clap(short = 'i', long = "input")]
+    pub input_path: Option<PathBuf>,
 
-    pub output_path: PathBuf,
+    #[clap(short = 'o', long = "output")]
+    pub output_path: Option<PathBuf>,
+
+    #[clap(short = 'c', long = "config")]
+    pub config_path: Option<PathBuf>,
 }
 
-// cargo run --release --bin mlaa_image -- test/input.png test/output.png
+// cargo run --release --bin mlaa_image -- -i test/input.png -o test/output.png
 
 fn main() {
     let args = MlaaArgs::parse();
 
-    let input_image = image::open(args.input_path)
-        .expect("Failed to open input image")
-        .into_rgba8();
+    let input_image = {
+        let mut reader: Box<dyn Read> = if let Some(input_path) = args.input_path.as_ref() {
+            Box::new(File::open(input_path).unwrap())
+        } else {
+            Box::new(std::io::stdin())
+        };
 
+        let image_format = args
+            .input_path
+            .and_then(ImageFormat::from_extension)
+            .unwrap_or(ImageFormat::Png);
+
+        let mut image_data = Vec::new();
+        reader.read_to_end(&mut image_data).unwrap();
+
+        image::load_from_memory_with_format(&image_data, image_format).unwrap()
+    };
+
+    let input_image = input_image.to_rgba8();
     let mut output_image = input_image.clone();
 
     mlaa_metrics(
@@ -70,7 +92,23 @@ fn main() {
         },
     );
 
-    output_image
-        .save(args.output_path)
-        .expect("Failed to save output image");
+    {
+        let mut writer: Box<dyn Write> = if let Some(output_path) = args.output_path.as_ref() {
+            Box::new(File::create(output_path).unwrap())
+        } else {
+            Box::new(std::io::stdout())
+        };
+
+        let image_format = args
+            .output_path
+            .and_then(ImageFormat::from_extension)
+            .unwrap_or(ImageFormat::Png);
+
+        let mut image_data = Vec::new();
+        output_image
+            .write_to(&mut Cursor::new(&mut image_data), image_format)
+            .unwrap();
+
+        writer.write_all(&image_data).unwrap();
+    }
 }
