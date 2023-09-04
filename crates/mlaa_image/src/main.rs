@@ -40,6 +40,29 @@ fn main() -> ExitCode {
 fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
     let args = MlaaArgs::parse();
 
+    let mlaa_options = {
+        let config_path = {
+            if let Some(config_path) = args.config_path {
+                Some(config_path)
+            } else {
+                let search_root = std::env::current_dir()?;
+
+                search_root
+                    .ancestors()
+                    .map(|search_directory| search_directory.to_owned().join(".mlaa"))
+                    .find(|config_path| config_path.is_file())
+            }
+        };
+
+        if let Some(config_path) = config_path {
+            eprintln!("mlaa_image: Using config file \"{}\"", config_path.display());
+            MlaaOptions::default()
+        } else {
+            eprintln!("mlaa_image: Using default MLAA options");
+            MlaaOptions::default()
+        }
+    };
+
     let input_image = {
         let mut reader: Box<dyn Read> = if let Some(input_path) = args.input_path.as_ref() {
             Box::new(File::open(input_path)?)
@@ -71,7 +94,7 @@ fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
                 .unwrap_or(&Rgba([0, 0, 0, 0]))
                 .to_owned()
         },
-        &MlaaOptions::default(),
+        &mlaa_options,
         |mlaa_feature| {
             mlaa_painter(
                 |c1, c2, t| {
