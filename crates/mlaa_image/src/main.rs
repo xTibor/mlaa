@@ -1,6 +1,10 @@
+#![feature(error_iter)]
+
+use std::error::Error;
 use std::fs::File;
 use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
+use std::process::ExitCode;
 
 use clap::Parser;
 use image::{ImageFormat, Rgba};
@@ -10,36 +14,49 @@ use mlaa_impl::{mlaa_metrics, mlaa_painter, MlaaOptions};
 #[derive(Parser)]
 struct MlaaArgs {
     #[clap(short = 'i', long = "input")]
-    pub input_path: Option<PathBuf>,
+    input_path: Option<PathBuf>,
 
     #[clap(short = 'o', long = "output")]
-    pub output_path: Option<PathBuf>,
+    output_path: Option<PathBuf>,
 
     #[clap(short = 'c', long = "config")]
-    pub config_path: Option<PathBuf>,
+    config_path: Option<PathBuf>,
 }
 
 // cargo run --release --bin mlaa_image -- -i test/input.png -o test/output.png
 
-fn main() {
+fn main() -> ExitCode {
+    match main_inner() {
+        Ok(exit_code) => exit_code,
+        Err(err) => {
+            for source in err.sources() {
+                eprintln!("mlaa_image: {}", source);
+            }
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
     let args = MlaaArgs::parse();
 
     let input_image = {
         let mut reader: Box<dyn Read> = if let Some(input_path) = args.input_path.as_ref() {
-            Box::new(File::open(input_path).unwrap())
+            Box::new(File::open(input_path)?)
         } else {
             Box::new(std::io::stdin())
         };
 
-        let image_format = args
-            .input_path
-            .and_then(ImageFormat::from_extension)
-            .unwrap_or(ImageFormat::Png);
+        let image_format = if let Some(input_path) = args.input_path.as_ref() {
+            ImageFormat::from_path(input_path).unwrap()
+        } else {
+            ImageFormat::Png
+        };
 
         let mut image_data = Vec::new();
-        reader.read_to_end(&mut image_data).unwrap();
+        reader.read_to_end(&mut image_data)?;
 
-        image::load_from_memory_with_format(&image_data, image_format).unwrap()
+        image::load_from_memory_with_format(&image_data, image_format)?
     };
 
     let input_image = input_image.to_rgba8();
@@ -94,21 +111,22 @@ fn main() {
 
     {
         let mut writer: Box<dyn Write> = if let Some(output_path) = args.output_path.as_ref() {
-            Box::new(File::create(output_path).unwrap())
+            Box::new(File::create(output_path)?)
         } else {
             Box::new(std::io::stdout())
         };
 
-        let image_format = args
-            .output_path
-            .and_then(ImageFormat::from_extension)
-            .unwrap_or(ImageFormat::Png);
+        let image_format = if let Some(output_path) = args.output_path.as_ref() {
+            ImageFormat::from_path(output_path).unwrap()
+        } else {
+            ImageFormat::Png
+        };
 
         let mut image_data = Vec::new();
-        output_image
-            .write_to(&mut Cursor::new(&mut image_data), image_format)
-            .unwrap();
+        output_image.write_to(&mut Cursor::new(&mut image_data), image_format)?;
 
-        writer.write_all(&image_data).unwrap();
+        writer.write_all(&image_data)?;
     }
+
+    Ok(ExitCode::SUCCESS)
 }
