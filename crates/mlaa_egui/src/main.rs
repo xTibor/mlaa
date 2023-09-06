@@ -80,6 +80,7 @@ impl MlaaApplication {
 
                 self.image_pixels[y as usize][x as usize]
             },
+            |c| Rgba::from(c).intensity(),
             &self.mlaa_options,
             |mlaa_feature| self.mlaa_features.push(mlaa_feature),
         );

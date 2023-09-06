@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
-use image::{ImageFormat, Rgba};
+use image::{ImageFormat, Pixel, Rgba};
 
 use mlaa_impl::{mlaa_features, mlaa_painter, MlaaOptions};
 
@@ -95,6 +95,7 @@ fn main_inner() -> Result<ExitCode, Box<dyn Error>> {
                 .unwrap_or(&Rgba([0, 0, 0, 0]))
                 .to_owned()
         },
+        |c| c.to_luma().0,
         &mlaa_options,
         |mlaa_feature| {
             mlaa_painter(

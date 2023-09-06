@@ -37,14 +37,17 @@ pub enum MlaaFeature<C> {
     },
 }
 
-pub fn mlaa_features<P, C, F>(
+pub fn mlaa_features<P, PB, B, C, F>(
     image_width: usize,
     image_height: usize,
     image_pixels: P,
+    pixel_brightness: PB,
     mlaa_options: &MlaaOptions,
     mut emit_mlaa_feature: F,
 ) where
     P: Fn(isize, isize) -> C,
+    PB: Fn(C) -> B,
+    B: PartialOrd,
     C: PartialEq + Copy + Clone,
     F: FnMut(MlaaFeature<C>),
 {
@@ -179,24 +182,155 @@ pub fn mlaa_features<P, C, F>(
                 let (c4, c5, c6) = (p(x - 1, y + 0), p(x + 0, y + 0), p(x + 1, y + 0));
                 let (c7, c8, c9) = (p(x - 1, y + 1), p(x + 0, y + 1), p(x + 1, y + 1));
 
-                // Top-left corner
-                if all_equals(&[c5, c6, c8]) && all_equals(&[c1, c2, c3, c4, c7]) && (c1 != c5) {
-                    emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c1, c5) })
+                // The light and dark corner placements have been separated
+                // to handle the following commonly occurring pixel pattern in
+                // binarized line arts (with all of its possible reflections):
+                //
+                // ....##   #: Color #1
+                // ...###   .: Color #2
+                // ...##,   ,: Color #3
+                // .##,,,
+                // ###,,,
+                // ##,,,,
+                //
+                // When Color #1 is darker than Color #2 and #3, the algorithm
+                // assumes it's an outline trace and tries to place corners to
+                // ensure the result looks more continous:
+                //
+                // ....##   #: Color #1
+                // ...###   .: Color #2
+                // ..C##,   ,: Color #3
+                // .##C,,   C: Corner pixel
+                // ###,,,
+                // ##,,,,
+                //
+                // When Color #1 is lighter than Color #2 and #3, the algorithm
+                // tries to separate the trace into two separate lines. This is
+                // a known quirk of my algorithm. If this behavior is
+                // undesirable, fix your line art.
+                //
+                // ....##   #: Color #1
+                // ...###   .: Color #2
+                // ...C#,   ,: Color #3
+                // .#C,,,   C: Corner pixel
+                // ###,,,
+                // ##,,,,
+                //
+                // This algorithm also handles blended corners on sharp boxes,
+                // not just outline traces:
+                //
+                // ......    ......   #: Color #1
+                // .####.    .C##C.   .: Color #2
+                // .####. => .####.   C: Corner pixel
+                // .####.    .####.
+                // .####.    .C##C.
+                // ......    ......
+                //
+                // ........    ........   #: Color #1
+                // .###....    .C#C....   .: Color #2
+                // .###....    .###....   C: Corner pixel
+                // .###....    .###C...
+                // .######. => .#####C.
+                // .######.    .######.
+                // .######.    .C####C.
+                // ........    ........
+                //
+                // Corner placement rules:
+                //
+                // Lighter corner on dark base color (top-left):
+                // +-+-+-+    +-+-+-+   D: Dark pixel
+                // |L|L|L|    |L|L|L|   L: Light pixel
+                // +-+-+-+    +-+-+-+   C: Corner pixel
+                // |L|D|D| => |L|C|D|
+                // +-+-+-+    +-+-+-+
+                // |L|D| |    |L|D| |
+                // +-+-+-+    +-+-+-+
+                //
+                // Darker corner on light base color (top-left):
+                // +-+-+-+    +-+-+-+   D: Dark pixel
+                // | |D|D|    | |D|D|   L: Light pixel
+                // +-+-+-+    +-+-+-+   C: Corner pixel
+                // |D|L|L| => |D|C|L|
+                // +-+-+-+    +-+-+-+
+                // |D|L| |    |D|L| |
+                // +-+-+-+    +-+-+-+
+
+                // Lighter corner on dark base color
+                {
+                    // Top-left corner
+                    if all_equals(&[c5, c6, c8])
+                        && all_equals(&[c1, c2, c3, c4, c7])
+                        && (c1 != c5)
+                        && (pixel_brightness(c1) >= pixel_brightness(c5))
+                    {
+                        emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c1, c5) })
+                    }
+
+                    // Top-right corner
+                    if all_equals(&[c4, c5, c8])
+                        && all_equals(&[c1, c2, c3, c6, c9])
+                        && (c3 != c5)
+                        && (pixel_brightness(c3) >= pixel_brightness(c5))
+                    {
+                        emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c3, c5) })
+                    }
+
+                    // Bottom-left corner
+                    if all_equals(&[c2, c5, c6])
+                        && all_equals(&[c1, c4, c7, c8, c9])
+                        && (c7 != c5)
+                        && (pixel_brightness(c7) >= pixel_brightness(c5))
+                    {
+                        emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c7, c5) })
+                    }
+
+                    // Bottom-right corner
+                    if all_equals(&[c2, c5, c4])
+                        && all_equals(&[c3, c6, c7, c8, c9])
+                        && (c9 != c5)
+                        && (pixel_brightness(c9) >= pixel_brightness(c5))
+                    {
+                        emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c9, c5) })
+                    }
                 }
 
-                // Top-right corner
-                if all_equals(&[c4, c5, c8]) && all_equals(&[c1, c2, c3, c6, c9]) && (c3 != c5) {
-                    emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c3, c5) })
-                }
+                // Darker corner on light base color
+                {
+                    // Top-left corner
+                    if all_equals(&[c5, c6, c8])
+                        && all_equals(&[c2, c3, c4, c7])
+                        && (c2 != c5)
+                        && (pixel_brightness(c2) < pixel_brightness(c5))
+                    {
+                        emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c2, c5) })
+                    }
 
-                // Bottom-left corner
-                if all_equals(&[c2, c5, c6]) && all_equals(&[c1, c4, c7, c8, c9]) && (c7 != c5) {
-                    emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c7, c5) })
-                }
+                    // Top-right corner
+                    if all_equals(&[c4, c5, c8])
+                        && all_equals(&[c1, c2, c6, c9])
+                        && (c2 != c5)
+                        && (pixel_brightness(c2) < pixel_brightness(c5))
+                    {
+                        emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c2, c5) })
+                    }
 
-                // Bottom-right corner
-                if all_equals(&[c2, c5, c4]) && all_equals(&[c3, c6, c7, c8, c9]) && (c9 != c5) {
-                    emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c9, c5) })
+                    // Bottom-left corner
+                    if all_equals(&[c2, c5, c6])
+                        && all_equals(&[c1, c4, c8, c9])
+                        && (c8 != c5)
+                        && (pixel_brightness(c8) < pixel_brightness(c5))
+                    {
+                        emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c8, c5) })
+                    }
+
+                    // Bottom-right corner
+                    if all_equals(&[c2, c5, c4])
+                        && all_equals(&[c3, c6, c7, c8])
+                        && (c8 != c5)
+                        && (pixel_brightness(c8) < pixel_brightness(c5))
+                    {
+                        emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c8, c5) })
+                    }
                 }
             }
         }
