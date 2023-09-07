@@ -1,2 +1,7 @@
 /target
 /test-nonfree
+
+**/*.png~
+**/*.png-autosave.kra
+
+/test/output.png
