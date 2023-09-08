@@ -1,18 +1,24 @@
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MlaaOptions {
-    pub seam_split_position: f32,
     pub vertical_gradients: bool,
     pub horizontal_gradients: bool,
     pub corners: bool,
+
+    pub seam_split_position: f32,
+    pub seam_brigtness_balance: bool,
+    pub seam_strict_neighbor_search: bool,
 }
 
 impl Default for MlaaOptions {
     fn default() -> Self {
         MlaaOptions {
-            seam_split_position: 0.0,
             vertical_gradients: true,
             horizontal_gradients: true,
             corners: true,
+
+            seam_split_position: 0.0,
+            seam_brigtness_balance: false,
+            seam_strict_neighbor_search: true,
         }
     }
 }
@@ -85,8 +91,37 @@ pub fn mlaa_features<P, PB, B, C, F>(
                 let seam_length = vertical_run(x, y, Box::new(move |c| c == seam_colors));
 
                 'neighbor_loop: for neighbor_delta in [-1, 1] {
-                    let neighbor_length =
-                        vertical_run(x + neighbor_delta, y + seam_length, Box::new(move |c| c == seam_colors));
+                    #[allow(clippy::identity_op)]
+                    let neighbor_colors = (
+                        image_pixels(x + neighbor_delta + 0, y + seam_length),
+                        image_pixels(x + neighbor_delta + 1, y + seam_length),
+                    );
+
+                    #[allow(clippy::collapsible_if)]
+                    if mlaa_options.seam_brigtness_balance {
+                        if (pixel_brightness(seam_colors.0) < pixel_brightness(seam_colors.1))
+                            != (pixel_brightness(neighbor_colors.0) < pixel_brightness(neighbor_colors.1))
+                        {
+                            continue;
+                        }
+                    }
+
+                    let neighbor_length = if mlaa_options.seam_strict_neighbor_search {
+                        vertical_run(x + neighbor_delta, y + seam_length, Box::new(move |c| c == seam_colors))
+                    } else {
+                        let neighbor_length_1 = vertical_run(
+                            x + neighbor_delta,
+                            y + seam_length,
+                            Box::new(move |(c1, c2)| (c1 == neighbor_colors.0) && (c2 == seam_colors.1) && (c1 != c2)),
+                        );
+                        let neighbor_length_2 = vertical_run(
+                            x + neighbor_delta,
+                            y + seam_length,
+                            Box::new(move |(c1, c2)| (c1 == seam_colors.0) && (c2 == neighbor_colors.1) && (c1 != c2)),
+                        );
+
+                        neighbor_length_1.max(neighbor_length_2)
+                    };
 
                     if neighbor_length > 0 {
                         let gradient_x = x.max(x + neighbor_delta) as f32;
@@ -100,9 +135,9 @@ pub fn mlaa_features<P, PB, B, C, F>(
                             - (neighbor_length as f32 / 2.0 * mlaa_options.seam_split_position);
 
                         let gradient_colors = if neighbor_delta < 0 {
-                            (seam_colors.0, seam_colors.1)
+                            (seam_colors.0, neighbor_colors.1)
                         } else {
-                            (seam_colors.1, seam_colors.0)
+                            (seam_colors.1, neighbor_colors.0)
                         };
 
                         emit_mlaa_feature(MlaaFeature::VerticalGradient {
@@ -132,8 +167,37 @@ pub fn mlaa_features<P, PB, B, C, F>(
                 let seam_length = horizontal_run(x, y, Box::new(move |c| c == seam_colors));
 
                 'neighbor_loop: for neighbor_delta in [-1, 1] {
-                    let neighbor_length =
-                        horizontal_run(x + seam_length, y + neighbor_delta, Box::new(move |c| c == seam_colors));
+                    #[allow(clippy::identity_op)]
+                    let neighbor_colors = (
+                        image_pixels(x + seam_length, y + neighbor_delta + 0),
+                        image_pixels(x + seam_length, y + neighbor_delta + 1),
+                    );
+
+                    #[allow(clippy::collapsible_if)]
+                    if mlaa_options.seam_brigtness_balance {
+                        if (pixel_brightness(seam_colors.0) < pixel_brightness(seam_colors.1))
+                            != (pixel_brightness(neighbor_colors.0) < pixel_brightness(neighbor_colors.1))
+                        {
+                            continue;
+                        }
+                    }
+
+                    let neighbor_length = if mlaa_options.seam_strict_neighbor_search {
+                        horizontal_run(x + seam_length, y + neighbor_delta, Box::new(move |c| c == seam_colors))
+                    } else {
+                        let neighbor_length_1 = horizontal_run(
+                            x + seam_length,
+                            y + neighbor_delta,
+                            Box::new(move |(c1, c2)| (c1 == neighbor_colors.0) && (c2 == seam_colors.1) && (c1 != c2)),
+                        );
+                        let neighbor_length_2 = horizontal_run(
+                            x + seam_length,
+                            y + neighbor_delta,
+                            Box::new(move |(c1, c2)| (c1 == seam_colors.0) && (c2 == neighbor_colors.1) && (c1 != c2)),
+                        );
+
+                        neighbor_length_1.max(neighbor_length_2)
+                    };
 
                     if neighbor_length > 0 {
                         let gradient_y = y.max(y + neighbor_delta) as f32;
@@ -147,9 +211,9 @@ pub fn mlaa_features<P, PB, B, C, F>(
                             - (neighbor_length as f32 / 2.0 * mlaa_options.seam_split_position);
 
                         let gradient_colors = if neighbor_delta < 0 {
-                            (seam_colors.0, seam_colors.1)
+                            (seam_colors.0, neighbor_colors.1)
                         } else {
-                            (seam_colors.1, seam_colors.0)
+                            (seam_colors.1, neighbor_colors.0)
                         };
 
                         emit_mlaa_feature(MlaaFeature::HorizontalGradient {

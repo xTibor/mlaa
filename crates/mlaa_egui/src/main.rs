@@ -120,6 +120,13 @@ impl eframe::App for MlaaApplication {
                     if ui.add(drag_value).changed() {
                         needs_feature_recalc = true;
                     }
+
+                    if (ui.checkbox(&mut self.mlaa_options.seam_brigtness_balance, "Seam brightness balance")
+                        | ui.checkbox(&mut self.mlaa_options.seam_strict_neighbor_search, "Strict neighbours"))
+                    .changed()
+                    {
+                        needs_feature_recalc = true;
+                    };
                 });
                 ui.separator();
 
