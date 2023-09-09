@@ -2,6 +2,6 @@ vertical_gradients = true
 horizontal_gradients = true
 corners = true
 
+strict_mode = true
 seam_split_position = 0.0
 seam_brigtness_balance = false
-seam_strict_neighbor_search = true

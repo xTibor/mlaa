@@ -121,8 +121,8 @@ impl eframe::App for MlaaApplication {
                         needs_feature_recalc = true;
                     }
 
-                    if (ui.checkbox(&mut self.mlaa_options.seam_brigtness_balance, "Seam brightness balance")
-                        | ui.checkbox(&mut self.mlaa_options.seam_strict_neighbor_search, "Strict neighbours"))
+                    if (ui.checkbox(&mut self.mlaa_options.strict_mode, "Strict mode")
+                        | ui.checkbox(&mut self.mlaa_options.seam_brigtness_balance, "Seam brightness balance"))
                     .changed()
                     {
                         needs_feature_recalc = true;

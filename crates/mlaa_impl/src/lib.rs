@@ -4,9 +4,9 @@ pub struct MlaaOptions {
     pub horizontal_gradients: bool,
     pub corners: bool,
 
+    pub strict_mode: bool,
     pub seam_split_position: f32,
     pub seam_brigtness_balance: bool,
-    pub seam_strict_neighbor_search: bool,
 }
 
 impl Default for MlaaOptions {
@@ -16,9 +16,9 @@ impl Default for MlaaOptions {
             horizontal_gradients: true,
             corners: true,
 
+            strict_mode: true,
             seam_split_position: 0.0,
             seam_brigtness_balance: false,
-            seam_strict_neighbor_search: true,
         }
     }
 }
@@ -106,7 +106,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                         }
                     }
 
-                    let neighbor_length = if mlaa_options.seam_strict_neighbor_search {
+                    let neighbor_length = if mlaa_options.strict_mode {
                         vertical_run(x + neighbor_delta, y + seam_length, Box::new(move |c| c == seam_colors))
                     } else {
                         let neighbor_length_1 = vertical_run(
@@ -182,7 +182,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                         }
                     }
 
-                    let neighbor_length = if mlaa_options.seam_strict_neighbor_search {
+                    let neighbor_length = if mlaa_options.strict_mode {
                         horizontal_run(x + seam_length, y + neighbor_delta, Box::new(move |c| c == seam_colors))
                     } else {
                         let neighbor_length_1 = horizontal_run(
