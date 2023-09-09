@@ -43,25 +43,22 @@ pub enum MlaaFeature<C> {
     },
 }
 
-pub fn mlaa_features<P, PB, B, C, F>(
+pub fn mlaa_features<B, C>(
     image_width: usize,
     image_height: usize,
-    image_pixels: P,
-    pixel_brightness: PB,
+    image_colors: impl Fn(isize, isize) -> C,
+    color_brightness: impl Fn(C) -> B,
     mlaa_options: &MlaaOptions,
-    mut emit_mlaa_feature: F,
+    mut emit_mlaa_feature: impl FnMut(MlaaFeature<C>),
 ) where
-    P: Fn(isize, isize) -> C,
-    PB: Fn(C) -> B,
     B: PartialOrd,
     C: PartialEq + Copy + Clone,
-    F: FnMut(MlaaFeature<C>),
 {
     let vertical_run = |x: isize, y: isize, pred: Box<dyn Fn((C, C)) -> bool>| -> isize {
         let mut run_length = 0;
 
         while (y + run_length < image_height as isize)
-            && pred((image_pixels(x, y + run_length), image_pixels(x + 1, y + run_length)))
+            && pred((image_colors(x, y + run_length), image_colors(x + 1, y + run_length)))
         {
             run_length += 1;
         }
@@ -73,7 +70,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
         let mut run_length = 0;
 
         while (x + run_length < image_width as isize)
-            && pred((image_pixels(x + run_length, y), image_pixels(x + run_length, y + 1)))
+            && pred((image_colors(x + run_length, y), image_colors(x + run_length, y + 1)))
         {
             run_length += 1;
         }
@@ -87,20 +84,20 @@ pub fn mlaa_features<P, PB, B, C, F>(
             y += vertical_run(x, y, Box::new(|(c1, c2)| c1 == c2));
 
             while y < image_height as isize {
-                let seam_colors = (image_pixels(x, y), image_pixels(x + 1, y));
+                let seam_colors = (image_colors(x, y), image_colors(x + 1, y));
                 let seam_length = vertical_run(x, y, Box::new(move |c| c == seam_colors));
 
                 'neighbor_loop: for neighbor_delta in [-1, 1] {
                     #[allow(clippy::identity_op)]
                     let neighbor_colors = (
-                        image_pixels(x + neighbor_delta + 0, y + seam_length),
-                        image_pixels(x + neighbor_delta + 1, y + seam_length),
+                        image_colors(x + neighbor_delta + 0, y + seam_length),
+                        image_colors(x + neighbor_delta + 1, y + seam_length),
                     );
 
                     #[allow(clippy::collapsible_if)]
                     if mlaa_options.seam_brigtness_balance {
-                        if (pixel_brightness(seam_colors.0) < pixel_brightness(seam_colors.1))
-                            != (pixel_brightness(neighbor_colors.0) < pixel_brightness(neighbor_colors.1))
+                        if (color_brightness(seam_colors.0) < color_brightness(seam_colors.1))
+                            != (color_brightness(neighbor_colors.0) < color_brightness(neighbor_colors.1))
                         {
                             continue;
                         }
@@ -163,20 +160,20 @@ pub fn mlaa_features<P, PB, B, C, F>(
             x += horizontal_run(x, y, Box::new(|(c1, c2)| c1 == c2));
 
             while x < image_width as isize {
-                let seam_colors = (image_pixels(x, y), image_pixels(x, y + 1));
+                let seam_colors = (image_colors(x, y), image_colors(x, y + 1));
                 let seam_length = horizontal_run(x, y, Box::new(move |c| c == seam_colors));
 
                 'neighbor_loop: for neighbor_delta in [-1, 1] {
                     #[allow(clippy::identity_op)]
                     let neighbor_colors = (
-                        image_pixels(x + seam_length, y + neighbor_delta + 0),
-                        image_pixels(x + seam_length, y + neighbor_delta + 1),
+                        image_colors(x + seam_length, y + neighbor_delta + 0),
+                        image_colors(x + seam_length, y + neighbor_delta + 1),
                     );
 
                     #[allow(clippy::collapsible_if)]
                     if mlaa_options.seam_brigtness_balance {
-                        if (pixel_brightness(seam_colors.0) < pixel_brightness(seam_colors.1))
-                            != (pixel_brightness(neighbor_colors.0) < pixel_brightness(neighbor_colors.1))
+                        if (color_brightness(seam_colors.0) < color_brightness(seam_colors.1))
+                            != (color_brightness(neighbor_colors.0) < color_brightness(neighbor_colors.1))
                         {
                             continue;
                         }
@@ -241,7 +238,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
 
         for y in 1..image_height as isize - 1 {
             for x in 1..image_width as isize - 1 {
-                let p = &image_pixels;
+                let p = &image_colors;
                 let (c1, c2, c3) = (p(x - 1, y - 1), p(x + 0, y - 1), p(x + 1, y - 1));
                 let (c4, c5, c6) = (p(x - 1, y + 0), p(x + 0, y + 0), p(x + 1, y + 0));
                 let (c7, c8, c9) = (p(x - 1, y + 1), p(x + 0, y + 1), p(x + 1, y + 1));
@@ -325,7 +322,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                     if all_equals(&[c5, c6, c8])
                         && all_equals(&[c1, c2, c3, c4, c7])
                         && (c1 != c5)
-                        && (pixel_brightness(c1) >= pixel_brightness(c5))
+                        && (color_brightness(c1) >= color_brightness(c5))
                     {
                         emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c1, c5) })
                     }
@@ -334,7 +331,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                     if all_equals(&[c4, c5, c8])
                         && all_equals(&[c1, c2, c3, c6, c9])
                         && (c3 != c5)
-                        && (pixel_brightness(c3) >= pixel_brightness(c5))
+                        && (color_brightness(c3) >= color_brightness(c5))
                     {
                         emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c3, c5) })
                     }
@@ -343,7 +340,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                     if all_equals(&[c2, c5, c6])
                         && all_equals(&[c1, c4, c7, c8, c9])
                         && (c7 != c5)
-                        && (pixel_brightness(c7) >= pixel_brightness(c5))
+                        && (color_brightness(c7) >= color_brightness(c5))
                     {
                         emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c7, c5) })
                     }
@@ -352,7 +349,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                     if all_equals(&[c2, c5, c4])
                         && all_equals(&[c3, c6, c7, c8, c9])
                         && (c9 != c5)
-                        && (pixel_brightness(c9) >= pixel_brightness(c5))
+                        && (color_brightness(c9) >= color_brightness(c5))
                     {
                         emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c9, c5) })
                     }
@@ -364,7 +361,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                     if all_equals(&[c5, c6, c8])
                         && all_equals(&[c2, c3, c4, c7])
                         && (c2 != c5)
-                        && (pixel_brightness(c2) < pixel_brightness(c5))
+                        && (color_brightness(c2) < color_brightness(c5))
                     {
                         emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c2, c5) })
                     }
@@ -373,7 +370,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                     if all_equals(&[c4, c5, c8])
                         && all_equals(&[c1, c2, c6, c9])
                         && (c2 != c5)
-                        && (pixel_brightness(c2) < pixel_brightness(c5))
+                        && (color_brightness(c2) < color_brightness(c5))
                     {
                         emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c2, c5) })
                     }
@@ -382,7 +379,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                     if all_equals(&[c2, c5, c6])
                         && all_equals(&[c1, c4, c8, c9])
                         && (c8 != c5)
-                        && (pixel_brightness(c8) < pixel_brightness(c5))
+                        && (color_brightness(c8) < color_brightness(c5))
                     {
                         emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c8, c5) })
                     }
@@ -391,7 +388,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
                     if all_equals(&[c2, c5, c4])
                         && all_equals(&[c3, c6, c7, c8])
                         && (c8 != c5)
-                        && (pixel_brightness(c8) < pixel_brightness(c5))
+                        && (color_brightness(c8) < color_brightness(c5))
                     {
                         emit_mlaa_feature(MlaaFeature::Corner { x, y, colors: (c8, c5) })
                     }
@@ -401,10 +398,11 @@ pub fn mlaa_features<P, PB, B, C, F>(
     }
 }
 
-pub fn mlaa_painter<B, C, D>(blend_colors: B, mut draw_pixel: D, mlaa_feature: &MlaaFeature<C>)
-where
-    B: Fn(C, C, f32) -> C,
-    D: FnMut(isize, isize, C),
+pub fn mlaa_painter<C>(
+    blend_colors: impl Fn(C, C, f32) -> C,
+    mut draw_pixel: impl FnMut(isize, isize, C),
+    mlaa_feature: &MlaaFeature<C>,
+) where
     C: PartialEq + Copy + Clone,
 {
     match mlaa_feature {
