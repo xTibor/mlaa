@@ -1,8 +1,8 @@
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MlaaOptions {
-    pub vertical_gradients: bool,
-    pub horizontal_gradients: bool,
-    pub corners: bool,
+    pub vertical_smoothing: bool,
+    pub horizontal_smoothing: bool,
+    pub corner_smoothing: bool,
 
     pub strict_mode: bool,
     pub seam_split_position: f32,
@@ -12,9 +12,9 @@ pub struct MlaaOptions {
 impl Default for MlaaOptions {
     fn default() -> Self {
         MlaaOptions {
-            vertical_gradients: true,
-            horizontal_gradients: true,
-            corners: true,
+            vertical_smoothing: true,
+            horizontal_smoothing: true,
+            corner_smoothing: true,
 
             strict_mode: true,
             seam_split_position: 0.0,
@@ -81,7 +81,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
         run_length
     };
 
-    if mlaa_options.vertical_gradients {
+    if mlaa_options.vertical_smoothing {
         for x in -1..image_width as isize {
             let mut y = 0;
             y += vertical_run(x, y, Box::new(|(c1, c2)| c1 == c2));
@@ -157,7 +157,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
         }
     }
 
-    if mlaa_options.horizontal_gradients {
+    if mlaa_options.horizontal_smoothing {
         for y in -1..image_height as isize {
             let mut x = 0;
             x += horizontal_run(x, y, Box::new(|(c1, c2)| c1 == c2));
@@ -234,7 +234,7 @@ pub fn mlaa_features<P, PB, B, C, F>(
     }
 
     #[allow(clippy::identity_op)]
-    if mlaa_options.corners {
+    if mlaa_options.corner_smoothing {
         fn all_equals<T: PartialEq>(items: &[T]) -> bool {
             items.iter().all(|item| item == &items[0])
         }

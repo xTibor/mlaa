@@ -1,6 +1,6 @@
-vertical_gradients = true
-horizontal_gradients = true
-corners = true
+vertical_smoothing = true
+horizontal_smoothing = true
+corner_smoothing = true
 
 strict_mode = true
 seam_split_position = 0.0

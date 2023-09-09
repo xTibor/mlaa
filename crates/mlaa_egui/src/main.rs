@@ -131,10 +131,10 @@ impl eframe::App for MlaaApplication {
                 ui.separator();
 
                 ui.vertical(|ui| {
-                    ui.label("MLAA features");
-                    if (ui.checkbox(&mut self.mlaa_options.vertical_gradients, "Vertical gradients")
-                        | ui.checkbox(&mut self.mlaa_options.horizontal_gradients, "Horizontal gradients")
-                        | ui.checkbox(&mut self.mlaa_options.corners, "Corners"))
+                    ui.label("Smoothing");
+                    if (ui.checkbox(&mut self.mlaa_options.vertical_smoothing, "Vertical")
+                        | ui.checkbox(&mut self.mlaa_options.horizontal_smoothing, "Horizontal")
+                        | ui.checkbox(&mut self.mlaa_options.corner_smoothing, "Corners"))
                     .changed()
                     {
                         needs_feature_recalc = true;
@@ -144,8 +144,8 @@ impl eframe::App for MlaaApplication {
 
                 ui.vertical(|ui| {
                     ui.label("Outlines");
-                    ui.checkbox(&mut self.show_vertical_outlines, "Vertical gradients");
-                    ui.checkbox(&mut self.show_horizontal_outlines, "Horizontal gradients");
+                    ui.checkbox(&mut self.show_vertical_outlines, "Vertical");
+                    ui.checkbox(&mut self.show_horizontal_outlines, "Horizontal");
                     ui.checkbox(&mut self.show_corner_outlines, "Corners");
                 });
                 ui.separator();
